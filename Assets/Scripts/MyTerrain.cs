@@ -1,13 +1,13 @@
 ﻿
-using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using UnityEngine;
 
 public class MyTerrain : MonoBehaviour {
 
-    public const int WIDTH =  5;
-    public const int DEPTH =  5;
-    public const int HEIGHT = 5;
+    public const int WIDTH =  4;
+    public const int DEPTH =  4;
+    public const int HEIGHT = 4;
 
     public static double min = double.MaxValue;
     public static double max = double.MinValue;
@@ -19,15 +19,39 @@ public class MyTerrain : MonoBehaviour {
 
     public float isolevel;
 
+    private Dictionary<Vector3, Chunk> chunksDict = new Dictionary<Vector3, Chunk>();
+
     //Overloads
     void Start()
     {
-        //Generate2DNoise();
-        Generate3DNoise();
+        Generate2DNoise();
+        //Generate3DNoise();
         GenerateChunks();
     }
 
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Space))
+        {
+            RenderChunks();
+        }
+
+        foreach (KeyValuePair<Vector3, Chunk> kvp in chunksDict)
+        {
+            kvp.Value.Render();
+        }
+
+    }
+
     //Helpers
+
+    #region Manual Logging
+    //private void Log(string message)
+    //{
+    //    System.IO.File.AppendAllText(path, message + "\n");
+    //}
+    #endregion
+
     private void Generate2DNoise()
     {
         int index = 0;
@@ -112,18 +136,39 @@ public class MyTerrain : MonoBehaviour {
             }
         }
     }
-    
-private void GenerateChunks()
-{
-    for (int z = 0; z < DEPTH; z++)
+    private void GenerateChunks()
+    {
+        var materials = Resources.LoadAll<Material>("Materials");
+        for (int z = 0; z < DEPTH; z++)
         {
             for (int y = 0; y < HEIGHT; y++)
             {
                 for (int x = 0; x < WIDTH; x++)
                 {
-                    var chunkGO = Instantiate(Resources.Load("Prefabs/Chunk"), new Vector3(x * Chunk.WIDTH, y * Chunk.HEIGHT, z * Chunk.DEPTH), Quaternion.identity) as GameObject;
+                    var position = new Vector3(x * Chunk.WIDTH, y * Chunk.HEIGHT, z * Chunk.DEPTH);
+                    var rotation = Quaternion.identity;
+
+                    var go = new GameObject(position.ToString());
+                    go.transform.position = position;
+                    go.transform.rotation = rotation;
+                    go.transform.parent = GameObject.Find("Terrain").transform;
+
+                    var newChunk = new Chunk(go, materials[1]);
+                    chunksDict.Add(position, newChunk);
                 }
             }
+        }
+    }
+
+    private void RenderChunks()
+    {
+        foreach(KeyValuePair<Vector3, Chunk> kvp in chunksDict)
+        {
+            kvp.Value.Clear();
+
+            var renderThread = new Thread(() => kvp.Value.TestTerrain());
+            renderThread.Start();
+
         }
     }
 }

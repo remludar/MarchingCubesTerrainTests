@@ -1,12 +1,15 @@
-﻿using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
+using System.Collections.Generic;
+using System;
+using System.Threading;
 
-public class Chunk : MonoBehaviour
+public class Chunk
 {
     public const int WIDTH =  16;
     public const int DEPTH =  16;
     public const int HEIGHT = 16;
 
+    GameObject go;
     MeshFilter meshFilter;
     MeshRenderer meshRenderer;
 
@@ -20,24 +23,41 @@ public class Chunk : MonoBehaviour
     MyTerrain terrain;
     Vector3 position;
 
-    //Overloads
-    void Start()
+    bool canRender = false;
+
+    public Chunk(GameObject gameObject, Material material)
     {
-        meshFilter = GetComponent<MeshFilter>();
-        meshRenderer = GetComponent<MeshRenderer>();
-        position = new Vector3(transform.position.x / WIDTH, transform.position.y / HEIGHT, transform.position.z / DEPTH);
+        go = gameObject;
+        meshFilter = go.AddComponent<MeshFilter>();
+        meshRenderer = go.AddComponent<MeshRenderer>();
+        meshRenderer.material = material;
+        position = new Vector3(go.transform.position.x / WIDTH, go.transform.position.y / HEIGHT, go.transform.position.z / DEPTH);
         terrainGO = GameObject.Find("Terrain");
         terrain = terrainGO.GetComponent<MyTerrain>();
-        Render();
-    }
-    void Update()
-    {
-        if (Input.GetKeyDown(KeyCode.Space))
-            Render();
     }
 
-    //Helpers
-    void TestTerrain()
+    public void Clear()
+    {
+        verts.Clear();
+        tris.Clear();
+        uvs.Clear();
+        meshFilter.mesh.Clear();
+    }
+
+    public void Render()
+    {
+        if (canRender)
+        {
+            var mesh = meshFilter.mesh;
+            mesh.vertices = verts.ToArray();
+            mesh.triangles = tris.ToArray();
+            mesh.uv = uvs.ToArray();
+            mesh.RecalculateNormals();
+            canRender = false;
+        }
+    }
+
+    public void TestTerrain()
     {
         var grids = new MarchingCubes.GridCell[WIDTH * HEIGHT * DEPTH];
 
@@ -97,21 +117,6 @@ public class Chunk : MonoBehaviour
                 triCount++;
             }
         }
-    }
-    void Render()
-    {
-        verts.Clear();
-        tris.Clear();
-        uvs.Clear();
-        meshFilter.mesh.Clear();
-
-        TestTerrain();
-
-
-        var mesh = meshFilter.mesh;
-        mesh.vertices = verts.ToArray();
-        mesh.triangles = tris.ToArray();
-        mesh.uv = uvs.ToArray();
-        mesh.RecalculateNormals();
+        canRender = true;
     }
 }
